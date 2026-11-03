@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CCTV QA/QC Demo</title>
+<style>
+  :root { --bg:#0b1220; --panel:#111b2e; --line:#1f2d47; --text:#dbe6f5; --muted:#7f93b3; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: "Segoe UI", system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--line); }
+  .dot { width:9px; height:9px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px #ef4444; }
+  header h1 { font-size:14px; font-weight:600; letter-spacing:.5px; margin:0; }
+  .wrap { display:grid; grid-template-columns: minmax(0,1.9fr) minmax(320px,1fr); gap:12px; padding:12px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .panel h2 { font-size:12px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:0; padding:10px 12px; border-bottom:1px solid var(--line); }
+  #video { width:100%; display:block; background:#000; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { text-align:left; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--line); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  td { padding:8px 10px; border-bottom:1px solid #16233a; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+  .tap { background:#123c2b; color:#4ade80; border:1px solid #1c5a3f; }
+  .leave { background:#122a44; color:#60a5fa; border:1px solid #1c3f66; }
+  .enter { background:#1b2a3f; color:#93c5fd; border:1px solid #24406a; }
+  .idle { background:#3b1d1d; color:#f87171; border:1px solid #5a2a2a; }
+  .cycle { color:#fbbf24; font-variant-numeric: tabular-nums; }
+  .log { max-height: calc(100vh - 140px); overflow-y:auto; }
+  .empty { color:var(--muted); padding:16px; font-size:12px; }
+</style>
+</head>
+<body>
+<header><span class="dot"></span><h1>TRỰC TIẾP · CCTV QA/QC</h1></header>
+<div class="wrap">
+  <section class="panel">
+    <h2>Camera</h2>
+    <img id="video" src="/video" alt="live">
+  </section>
+  <section class="panel">
+    <h2>Nhật ký hành động</h2>
+    <div class="log">
+      <table>
+        <thead><tr><th>#</th><th>Thời gian</th><th>Hành động</th><th>Chu kỳ</th><th>Mức độ</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div id="empty" class="empty">Đang chờ sự kiện...</div>
+    </div>
+  </section>
+</div>
+<script>
+  const rows = document.getElementById("rows");
+  const empty = document.getElementById("empty");
+  const cls = { "BAM MAY TINH BANG":"tap", "RA KHAY":"leave", "VAO KHU VUC":"enter", "KHONG THAO TAC":"idle" };
+
+  function add(e) {
+    empty.style.display = "none";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${e.id}</td><td>${e.ts}</td>` +
+      `<td><span class="tag ${cls[e.action] || "enter"}">${e.label || e.action}</span></td>` +
+      `<td class="cycle">${e.cycle_sec == null ? "—" : e.cycle_sec + "s"}</td>` +
+      `<td>${e.level}</td>`;
+    rows.prepend(tr);
+    while (rows.children.length > 200) rows.lastChild.remove();
+  }
+
+  function connect() {
+    const ws = new WebSocket(`ws://${location.host}/ws`);
+    ws.onmessage = (m) => add(JSON.parse(m.data));
+    ws.onclose = () => setTimeout(connect, 1500);
+  }
+  connect();
+</script>
+</body>
+</html>
